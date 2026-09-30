@@ -1,7 +1,10 @@
 import SwiftUI
+import SwiftData
 
 struct UserDetailView: View {
-    @State var user: User
+    // Task 4: SwiftData ModelContext and @Bindable object binding
+    @Environment(\.modelContext) private var modelContext
+    @Bindable var user: User
     @State private var newTaskTitle = ""
 
     var body: some View {
@@ -17,7 +20,8 @@ struct UserDetailView: View {
                     TextField("New task title...", text: $newTaskTitle)
                     Button("Add") {
                         guard !newTaskTitle.isEmpty else { return }
-                        let newTask = UserTask(title: newTaskTitle)
+                        // Task 4: Create and persist new task associated with user
+                        let newTask = UserTask(title: newTaskTitle, user: user)
                         user.tasks.append(newTask)
                         newTaskTitle = ""
                     }
@@ -26,17 +30,34 @@ struct UserDetailView: View {
                 }
 
                 ForEach(user.tasks) { task in
-                    HStack {
-                        Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
-                            .foregroundColor(task.isCompleted ? .green : .gray)
-                        Text(task.title)
-                        Spacer()
+                    Button {
+                        // Task 4: Update task completion state
+                        task.isCompleted.toggle()
+                    } label: {
+                        HStack {
+                            Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
+                                .foregroundColor(task.isCompleted ? .green : .gray)
+                            Text(task.title)
+                                .foregroundColor(.primary)
+                            Spacer()
+                        }
                     }
+                    .buttonStyle(.plain)
                 }
+                // Task 4: Delete task from ModelContext
+                .onDelete(perform: deleteTask)
             }
         }
         .navigationTitle(user.name)
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    // Task 4: Delete task from ModelContext
+    private func deleteTask(at offsets: IndexSet) {
+        for index in offsets {
+            let task = user.tasks[index]
+            modelContext.delete(task)
+        }
     }
 }
 
@@ -44,4 +65,6 @@ struct UserDetailView: View {
     NavigationStack {
         UserDetailView(user: User.mockUsers[0])
     }
+    .modelContainer(for: [User.self, UserTask.self], inMemory: true)
 }
+
